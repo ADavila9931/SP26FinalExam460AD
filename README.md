@@ -1,29 +1,21 @@
 # The Torchbearer
 
-**Student Name:** ___________________________
-**Student ID:** ___________________________
+**Student Name:** Angel Davila
+**Student ID:** 130670316
 **Course:** CS 460 – Algorithms | Spring 2026
-
-> This README is your project documentation. Write it the way a developer would document
-> their design decisions , bullet points, brief justifications, and concrete examples where
-> required. You are not writing an essay. You are explaining what you built and why you built
-> it that way. Delete all blockquotes like this one before submitting.
 
 ---
 
 ## Part 1: Problem Analysis
 
-> Document why this problem is not just a shortest-path problem. Three bullet points, one
-> per question. Each bullet should be 1-2 sentences max.
-
 - **Why a single shortest-path run from S is not enough:**
-  _Your answer here._
+  Dijkstra from S gives us the cheapest way to reach each node in isolation, but it does not consider the cost of traveling between relics in sequence.
 
 - **What decision remains after all inter-location costs are known:**
-  _Your answer here._
+  Even with all pairwise shortest-path distances considered, we must still choose the order in which to visit the relics, since the way we put things together result in different fuel costs.
 
-- **Why this requires a search over orders (one sentence):**
-  _Your answer here._
+- **Why this requires a search over orders:**
+  No greedy rule guarantees the globally cheapest sequence, so we must search over relic orderings and prune branches that cannot beat the best solution found so far.
 
 ---
 
@@ -31,70 +23,54 @@
 
 ### Part 2a: Source Selection
 
-> List the source node types as a bullet list. For each, one-line reason.
-
 | Source Node Type | Why it is a source |
 |---|---|
-| _node type_ | _one-line reason_ |
-| _node type_ | _one-line reason_ |
+| Spawn node (S) | The route begins here, so we need shortest distances from S to every relic. |
+| Each relic node | After visiting a relic we travel to the next relic or to the exit, so we need shortest distances from every relic to every other node. |
 
 ### Part 2b: Distance Storage
 
-> Fill in the table. No prose required.
-
 | Property | Your answer |
 |---|---|
-| Data structure name | |
-| What the keys represent | |
-| What the values represent | |
-| Lookup time complexity | |
-| Why O(1) lookup is possible | |
+| Data structure name | Nested dictionary (dict of dicts) |
+| What the keys represent | Source node (outer key), destination node (inner key) |
+| What the values represent | Minimum fuel cost (shortest-path distance) from the outer-key node to the inner-key node |
+| Lookup time complexity | O(1) average |
+| Why O(1) lookup is possible | Python dicts use hash tables, so both the outer and inner key lookups are O(1) average. |
 
 ### Part 2c: Precomputation Complexity
 
-> State the total complexity and show the arithmetic. Two to three lines max.
-
-- **Number of Dijkstra runs:** _your answer_
-- **Cost per run:** _your answer_
-- **Total complexity:** _your answer_
-- **Justification (one line):** _your answer_
+- **Number of Dijkstra runs:** 1 + k (one from spawn, one from each of the k relics)
+- **Cost per run:** O((V + E) log V) using a binary min-heap
+- **Total complexity:** O((1 + k)(V + E) log V)
+- **Justification:** We run one Dijkstra per source node, and each run costs O((V + E) log V), so the total can be simplified to the amount of sources times their run cost.
 
 ---
 
 ## Part 3: Algorithm Correctness
 
-> Document your understanding of why Dijkstra produces correct distances.
-> Bullet points and short sentences throughout. No paragraphs.
-
 ### Part 3a: What the Invariant Means
 
-> Two bullets: one for finalized nodes, one for non-finalized nodes.
-> Do not copy the invariant text from the spec.
-
 - **For nodes already finalized (in S):**
-  _Your answer here._
+  The current distance in the node represents the best global path and there is not anything else to improve
 
 - **For nodes not yet finalized (not in S):**
-  _Your answer here._
+  The current distance isn't yet confirmed to be the best option and could still be improved based on other finalized nodes.
 
 ### Part 3b: Why Each Phase Holds
 
-> One to two bullets per phase. Maintenance must mention nonnegative edge weights.
+- **Initialization – why the invariant holds before iteration 1:**
+  The source starts at distance 0 (correct, since there's no path yet) and every other node starts at infinity, so the invariant is trivially satisfied.
 
-- **Initialization : why the invariant holds before iteration 1:**
-  _Your answer here._
+- **Maintenance – why finalizing the min-dist node is always correct:**
+  When we extract node u with the current minimum distance, any alternative path to u through an unrealized node must pass through at least one unrealized edge. Because all edge weights are non negative, other options costs at least as much as dist[u], so dist[u] is already optimal.
 
-- **Maintenance : why finalizing the min-dist node is always correct:**
-  _Your answer here._
-
-- **Termination : what the invariant guarantees when the algorithm ends:**
-  _Your answer here._
+- **Termination – what the invariant guarantees when the algorithm ends:**
+  Once the heap is empty every node is finalized, so the invariant guarantees that every recorded distance is the true shortest-path cost from the source.
 
 ### Part 3c: Why This Matters for the Route Planner
 
-> One sentence connecting correct distances to correct routing decisions.
-
-_Your answer here._
+Because Dijkstra returns exact shortest-path distances, every value in `dist_table` is a correct inter-location cost, which ensures the route planner's pruning decisions and final optimal claim are also correct.
 
 ---
 
@@ -102,20 +78,15 @@ _Your answer here._
 
 ### Why Greedy Fails
 
-> State the failure mode. Then give a concrete counter-example using specific node names
-> or costs (you may use the illustration example from the spec). Three to five bullets.
-
-- **The failure mode:** _Your answer here._
-- **Counter-example setup:** _Your answer here._
-- **What greedy picks:** _Your answer here._
-- **What optimal picks:** _Your answer here._
-- **Why greedy loses:** _Your answer here._
+- **The failure mode:** Greedy picks the nearest uncollected relic at each node can result in a more expensive and longer path making it not optimal.
+- **Counter-example setup:** Using the spec illustration: S->B (cost 1), S->C (cost 2), S->D (cost 2); B->D (cost 1), B->T (cost 1); C->B (cost 1), C->T (cost 1); D->B (cost 1), D->C (cost 1). Relics = {B, C, D}, exit = T.
+- **What greedy picks:** Greedy selects B first (cheapest from S at cost 1), then D (cost 1), then C (cost 1), then T (cost 1) = total 4. In configurations where greedy's first choice leads to a worse sequence, total cost exceeds the optimum.
+- **What optimal picks:** Exhaustive search over all orderings finds the minimum-cost permutation; in this example it also yields cost 4, but correctness is guaranteed by thoroughness.
+- **Why greedy loses:** Greedy commits to the locally cheapest next step without accounting for how that choice affects all subsequent branches. The global optimum can only be found by considering every possible order.
 
 ### What the Algorithm Must Explore
 
-> One bullet. Must use the word "order."
-
-- _Your answer here._
+- The algorithm must explore every possible **order** in which the relics can be visited, pruning any partial order whose accumulated cost already matches or exceeds the best complete order found so far.
 
 ---
 
@@ -123,33 +94,26 @@ _Your answer here._
 
 ### Part 5a: State Representation
 
-> Document the three components of your search state as a table.
-> Variable names here must match exactly what you use in torchbearer.py.
-
 | Component | Variable name in code | Data type | Description |
 |---|---|---|---|
-| Current location | | | |
-| Relics already collected | | | |
-| Fuel cost so far | | | |
+| Current location | `current_loc` | node (any hashable) | The node the agent is currently at |
+| Relics already collected | `relics_visited_order` | list[node] | Ordered list of relics collected so far |
+| Fuel cost so far | `cost_so_far` | float | Total fuel burned to reach `current_loc` via `relics_visited_order` |
 
 ### Part 5b: Data Structure for Visited Relics
 
-> Fill in the table.
-
 | Property | Your answer |
 |---|---|
-| Data structure chosen | |
-| Operation: check if relic already collected | Time complexity: |
-| Operation: mark a relic as collected | Time complexity: |
-| Operation: unmark a relic (backtrack) | Time complexity: |
-| Why this structure fits | |
+| Data structure chosen | set (Python `set`) |
+| Operation: check if relic already collected | Time complexity: O(1) average |
+| Operation: mark a relic as collected | Time complexity: O(1) average |
+| Operation: unmark a relic (backtrack) | Time complexity: O(1) average |
+| Why this structure fits | Hash-set membership, insertion, and deletion are all O(1) average, making the per-step overhead minimal during recursive backtracking. |
 
 ### Part 5c: Worst-Case Search Space
 
-> Two bullets.
-
-- **Worst-case number of orders considered:** _Your answer (in terms of k)._
-- **Why:** _One-line justification._
+- **Worst-case number of orders considered:** O(k!)
+- **Why:** In the worst case there are k choices for the first relic, k−1 for the second, and so on, yielding k! distinct orderings. And without pruning every ordering must be evaluated.
 
 ---
 
@@ -157,30 +121,24 @@ _Your answer here._
 
 ### Part 6a: Best-So-Far Tracking
 
-> Three bullets.
-
-- **What is tracked:** _Your answer here._
-- **When it is used:** _Your answer here._
-- **What it allows the algorithm to skip:** _Your answer here._
+- **What is tracked:** `best[0]` — the minimum total fuel cost of any complete valid route found so far. `best[1]` — the relic ordering that achieved it.
+- **When it is used:** At the start of each recursive call (before branching) and at the base case when a complete route is evaluated.
+- **What it allows the algorithm to skip:** Any partial route whose `cost_so_far` plus the cheapest possible next step already meets or exceeds `best[0]`. These branches cannot yield a new optimum.
 
 ### Part 6b: Lower Bound Estimation
 
-> Three bullets.
-
-- **What information is available at the current state:** _Your answer here._
-- **What the lower bound accounts for:** _Your answer here._
-- **Why it never overestimates:** _Your answer here._
+- **What information is available at the current state:** `cost_so_far` (exact fuel burned so far) and `dist_table[current_loc][r]` for every remaining relic r.
+- **What the lower bound accounts for:** The minimum possible cost of a single additional branch — `min(dist_table[current_loc][r] for r in relics_remaining)` — representing the cheapest relic we could visit next.
+- **Why it never overestimates:** Dijkstra distances are exact shortest-path costs; using the minimum over all remaining relics cannot exceed the actual next-leg cost regardless of which relic is chosen.
 
 ### Part 6c: Pruning Correctness
 
-> One to two bullets. Explain why pruning is safe.
-
-- _Your answer here._
+- Pruning is safe because the lower bound `cost_so_far + min_next_cost` is a true lower bound, Every edge weight is non negative, so the current partial path needs to cost at least this much.
+- Therefore, if `cost_so_far + min_next_cost >= best[0]`, no descendant state can improve `best[0]`, and the entire sub tree can be discarded without missing the optimal solution.
 
 ---
 
 ## References
 
-> Bullet list. If none beyond lecture notes, write that.
+- Lecture notes and course slides for CS 460, Spring 2026.
 
-- _Your references here._
