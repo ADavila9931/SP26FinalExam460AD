@@ -146,33 +146,22 @@ def dijkstra_invariant_check():
     """
     return (
         "Invariant – finalized nodes (in S): "
-        "For every node u already extracted from the priority queue, dist[u] holds the "
-        "true shortest-path cost from the source; no future relaxation can improve it.\n\n"
+        "The current distance in the node represents the best global path and there is not anything else to improve\n\n"
 
         "Invariant – non-finalized nodes (not in S): "
-        "For every node v not yet finalized, dist[v] is the cost of the shortest path "
-        "found so far using only finalized nodes as intermediate stops; it is an upper "
-        "bound that may still be tightened.\n\n"
+        "The current distance isn't yet confirmed to be the best option and could still be improved based on other finalized nodes.\n\n"
 
         "Initialization: "
-        "Before the first iteration, only the source has dist = 0 (correctly, since the "
-        "shortest path from source to itself costs 0) and every other node has dist = inf, "
-        "so the invariant holds trivially.\n\n"
+        "why the invariant holds before iteration 1: The source starts at distance 0 (correct, since there's no path yet) and every other node starts at infinity, so the invariant is trivially satisfied.\n\n"
 
         "Maintenance: "
-        "When we extract the minimum-dist node u from the heap and finalize it, no cheaper "
-        "path to u can exist: all edge weights are nonnegative, so any alternative path "
-        "through an unfinalized node would cost at least dist[u]. Relaxing u's neighbors "
-        "then preserves the invariant for the remaining unfinalized nodes.\n\n"
+        "why finalizing the min-dist node is always correct: When we extract node u with the current minimum distance, any alternative path to u through an unrealized node must pass through at least one unrealized edge. Because all edge weights are non negative, other options costs at least as much as dist[u], so dist[u] is already optimal.\n\n"
 
         "Termination: "
-        "When the heap is empty every node is finalized, so the invariant guarantees that "
-        "dist[v] equals the true shortest-path cost from source to v for every v.\n\n"
+        "what the invariant guarantees when the algorithm ends: Once the heap is empty every node is finalized, so the invariant guarantees that every recorded distance is the true shortest-path cost from the source.\n\n"
 
         "Why this matters for the route planner: "
-        "Because Dijkstra returns exact shortest-path distances, the values stored in "
-        "dist_table are correct lower bounds on leg costs, which means the route planner's "
-        "pruning and optimality conclusions are also correct."
+        "Because Dijkstra returns exact shortest-path distances, every value in dist_table is a correct inter-location cost, which ensures the route planner's pruning decisions and final optimal claim are also correct."
     )
 
 
@@ -189,38 +178,22 @@ def explain_search():
         Must match what you wrote in README Part 4.
     """
     return (
-        "Why greedy fails – failure mode: "
-        "A greedy algorithm always picks the nearest uncollected relic next. This local "
-        "choice can force the agent into a costly detour to reach the remaining relics, "
-        "resulting in a suboptimal total cost.\n\n"
+        "Greedy picks the nearest uncollected relic at each node can result in a more expensive and longer path making it not optimal.\n\n"
 
         "Counter-example setup (from spec illustration): "
-        "Spawn S connects to B (cost 1), C (cost 2), D (cost 2). "
-        "B connects to D (cost 1) and exit T (cost 1). "
-        "C connects to B (cost 1) and T (cost 1). "
-        "D connects to B (cost 1) and C (cost 1). "
-        "Relics are B, C, D; exit is T.\n\n"
+        "Using the spec illustration: S->B (cost 1), S->C (cost 2), S->D (cost 2); B->D (cost 1), B->T (cost 1); C->B (cost 1), C->T (cost 1); D->B (cost 1), D->C (cost 1). Relics = {B, C, D}, exit = T.\n\n"
 
         "What greedy picks: "
-        "Greedy goes S->B (cost 1, nearest), then B->D (cost 1), then D->C (cost 1), "
-        "then must return toward T: C->T costs 1, total = 1+1+1+1 = 4. "
-        "However in other graph configurations greedy makes strictly worse choices; "
-        "the key point is no guarantee of optimality.\n\n"
+        "Greedy selects B first (cheapest from S at cost 1), then D (cost 1), then C (cost 1), then T (cost 1) = total 4. In configurations where greedy's first choice leads to a worse sequence, total cost exceeds the optimum.\n\n"
 
         "What optimal picks: "
-        "The optimal order explores all relic permutations and selects the one with "
-        "minimum total fuel, which in this example is also 4 but is found by exhaustive "
-        "search rather than a heuristic.\n\n"
+        "Exhaustive search over all orderings finds the minimum-cost permutation; in this example it also yields cost 4, but correctness is guaranteed by thoroughness.\n\n"
 
         "Why greedy loses: "
-        "Greedy commits to the cheapest immediate step without accounting for how that "
-        "choice affects the cost of all subsequent legs; the algorithm must instead search "
-        "over all possible orders of the relics.\n\n"
+        "Greedy commits to the locally cheapest next step without accounting for how that choice affects all subsequent branches. The global optimum can only be found by considering every possible order.\n\n"
 
         "What the algorithm must explore: "
-        "The algorithm must explore every possible order in which the relics can be "
-        "visited, pruning orders whose partial cost already exceeds the best complete "
-        "order found so far."
+        "The algorithm must explore every possible order in which the relics can be visited, pruning any partial order whose accumulated cost already matches or exceeds the best complete order found so far."
     )
 
 
